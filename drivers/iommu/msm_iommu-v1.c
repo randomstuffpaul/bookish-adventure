@@ -39,6 +39,9 @@
 /* bitmap of the page sizes currently supported */
 #define MSM_IOMMU_PGSIZES	(SZ_4K | SZ_64K | SZ_1M | SZ_16M)
 
+extern void mdss_xlog_tout_handler(const char *name, ...);
+extern void mdss_log_fault(void);
+
 static DEFINE_MUTEX(msm_iommu_lock);
 struct dump_regs_tbl dump_regs_tbl[MAX_DUMP_REGS];
 

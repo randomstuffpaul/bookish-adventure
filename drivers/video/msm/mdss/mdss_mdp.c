@@ -922,6 +922,59 @@ static int mdss_mdp_irq_clk_setup(struct mdss_data_type *mdata)
 	return 0;
 }
 
+static int mdss_iommu_fault_handler(struct iommu_domain *domain,
+		struct device *dev, unsigned long iova, int flags, void *token)
+{
+	u32 fsynr0, fsynr1;
+	struct msm_iommu_drvdata *drvdata;
+	struct msm_iommu_ctx_drvdata *ctx_drvdata;
+	struct mdss_data_type *mdata = mdss_res; //mdss_mdp_get_mdata();
+
+	drvdata = dev_get_drvdata(dev->parent);
+	MDSS_XLOG(0x9999);
+	//mdata->sleepfault = 1;
+	ctx_drvdata = dev_get_drvdata(dev);
+
+	fsynr0 = readl_relaxed((drvdata->base) + 0x8000 + (0x068) +
+		((ctx_drvdata->num) << 12));
+	fsynr1 = readl_relaxed((drvdata->base) + 0x8000 + (0x06C) +
+		((ctx_drvdata->num) << 12));
+
+	pr_err("MDP IOMMU page fault: iova=0x%lx FSYNR0=0x%08x FSYNR1=0x%08x\n",
+		iova, fsynr0, fsynr1);
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
+	pr_err("MDP Control0 Registers\n");
+	mdss_dump_reg(mdata->mdp_base + 0x600,33);
+
+	pr_err("MDP Control1 Registers\n");
+	mdss_dump_reg(mdata->mdp_base + 0x700,33);
+
+	pr_err("MDP Control2 Registers\n");
+	mdss_dump_reg(mdata->mdp_base + 0x800,33);
+
+	pr_err("ViG0 SSPP SWI Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x1200,185);
+
+	pr_err("RGB0 SSPP SWI Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x1E00,185);
+
+	pr_err("DMA0 SSPP SWI Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x2A00,185);
+
+	pr_err("Display WB0 SWI Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x11100, 108);
+
+	pr_err("Display WB1 SWI Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x13100, 108);
+
+	pr_err("Display Layer Mixer0 Register Set\n");
+	mdss_dump_reg(mdata->mdp_base + 0x3200, 297);
+	MDSS_XLOG_TOUT_HANDLER("dsi0");
+	return -ENOSYS;
+}
+
 void mdss_mdp_dump_power_clk(void)
 {
 	u8 clk_idx = 0;
@@ -985,6 +1038,7 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 	}
 
 	mdata->iommu_attached = true;
+	MDSS_XLOG(mdata->iommu_attached);
 end:
 	return rc;
 }
@@ -1018,7 +1072,7 @@ int mdss_iommu_dettach(struct mdss_data_type *mdata)
 	}
 
 	mdata->iommu_attached = false;
-
+	MDSS_XLOG(mdata->iommu_attached);
 	return 0;
 }
 
@@ -1053,7 +1107,7 @@ int mdss_iommu_init(struct mdss_data_type *mdata)
 				iomap->domain_idx);
 			return -EINVAL;
 		}
-
+		iommu_set_fault_handler(domain, mdss_iommu_fault_handler, NULL);
 		iomap->ctx = msm_iommu_get_ctx(iomap->ctx_name);
 		if (!iomap->ctx) {
 			pr_warn("unable to get iommu ctx(%s)\n",

@@ -3374,10 +3374,12 @@ static int tcp_is_local(struct net *net, __be32 addr) {
 }
 
 #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
-static int tcp_is_local6(struct net *net, struct in6_addr *addr) {
-	struct rt6_info *rt6 = rt6_lookup(net, addr, addr, 0, 0);
-	return rt6 && rt6->dst.dev && (rt6->dst.dev->flags & IFF_LOOPBACK);
-}
+// <RNTIFX::temporary fix - Because always net addr is loopback, tcp_is_local6 is always return to true.
+//static int tcp_is_local6(struct net *net, struct in6_addr *addr) {
+//	struct rt6_info *rt6 = rt6_lookup(net, addr, addr, 0, 0);
+//	return rt6 && rt6->dst.dev && (rt6->dst.dev->flags & IFF_LOOPBACK);
+//}
+// >RNTFIX
 #endif
 
 /*
@@ -3439,10 +3441,14 @@ restart:
 				s6 = &inet->pinet6->rcv_saddr;
 				if (ipv6_addr_type(s6) == IPV6_ADDR_MAPPED)
 					continue;
+				// <RNTIFX::temporary fix - Because always net addr is loopback, tcp_is_local6 is always return to true.
+				//if (!ipv6_addr_equal(in6, s6) &&
+				//    !(ipv6_addr_equal(in6, &in6addr_any) &&
+				//      !tcp_is_local6(net, s6)))
+				// >RNTFIX
 
 				if (!ipv6_addr_equal(in6, s6) &&
-				    !(ipv6_addr_equal(in6, &in6addr_any) &&
-				      !tcp_is_local6(net, s6)))
+				    !ipv6_addr_equal(in6, &in6addr_any))
 				continue;
 			}
 #endif

@@ -1563,6 +1563,11 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	/* overflow is not connect to data in a FIFO */
 	if (unlikely((status & UARTDM_SR_OVERRUN_BMSK) &&
 		     (uport->read_status_mask & CREAD))) {
+             if (NULL == tty) {
+                 MSM_HS_WARN("%s(): invalid tty", __func__);
+                 spin_unlock_irqrestore(&uport->lock, flags);
+                 return;
+             }
 		retval = tty_insert_flip_char(tty, 0, TTY_OVERRUN);
 		if (!retval)
 			msm_uport->rx.buffer_pending |= TTY_OVERRUN;
